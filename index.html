@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Морской бой · 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<style>
+:root{ --neon:#46c8ff; --ink:#eaf4f7; --red:#ff5b4d; --grn:#7CFFB0; }
+*{box-sizing:border-box}
+body{ font-family:'Rubik',sans-serif; color:var(--ink); margin:0; min-height:100vh; padding:16px;
+  background:radial-gradient(1200px 700px at 50% -10%, #123047 0%, #081c29 55%, #030d14 100%); overflow-x:hidden;}
+.titlewrap{text-align:center; margin-bottom:12px}
+h1{ display:inline-block; font-family:'Press Start 2P',monospace; font-size:22px; margin:0; padding:14px 30px;
+  color:#bfeaff; background:#0a2236; border:3px solid var(--neon); border-radius:10px;
+  text-shadow:0 0 10px var(--neon),0 0 22px #1e90ff; box-shadow:0 0 22px rgba(70,200,255,.45), inset 0 0 20px rgba(70,200,255,.18);}
+.sub{text-align:center; opacity:.6; margin-bottom:14px; letter-spacing:3px; font-size:12px; text-transform:uppercase}
+.card{ max-width:1180px; margin:0 auto 14px; background:linear-gradient(160deg, rgba(24,55,78,.9), rgba(8,28,40,.95));
+  border:1.5px solid rgba(70,200,255,.4); border-radius:18px; padding:18px; box-shadow:0 18px 50px rgba(0,0,0,.55); position:relative;}
+.row{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; align-items:center}
+button,input{font-family:'Rubik',sans-serif; font-size:15px; font-weight:600}
+button{ cursor:pointer; color:#06222e; background:linear-gradient(180deg,#7fe0ff,#46c8ff); border:none; padding:10px 18px; border-radius:12px; box-shadow:0 6px 16px rgba(70,200,255,.3), inset 0 1px 0 rgba(255,255,255,.5); transition:transform .06s, filter .15s;}
+button:hover{transform:translateY(-1px); filter:brightness(1.06)} button:active{transform:translateY(1px)}
+button.ghost{background:linear-gradient(180deg,#1c4d66,#123848); color:#9fe6ff; box-shadow:inset 0 0 0 1px rgba(70,200,255,.4)}
+button:disabled{opacity:.4; cursor:not-allowed; transform:none}
+input{padding:10px 14px; border:1.5px solid rgba(70,200,255,.5); border-radius:12px; background:rgba(4,20,29,.7); color:var(--ink); width:180px; text-transform:uppercase; letter-spacing:3px; text-align:center}
+.status{text-align:center; font-size:19px; min-height:26px; margin:8px 0; font-weight:600}
+.hint{text-align:center; opacity:.7; font-size:14px}
+.code{font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:4px; color:#7fe0ff; user-select:all; text-shadow:0 0 14px var(--neon)}
+.hidden{display:none}
+.pill{display:inline-block; padding:6px 14px; border-radius:20px; font-size:14px; background:rgba(4,20,29,.6); border:1px solid rgba(70,200,255,.35)}
+.turn-me{background:linear-gradient(180deg,#1f7a4a,#0f5230); border-color:var(--grn)}
+.turn-foe{background:linear-gradient(180deg,#8d3b32,#5d241d); border-color:var(--red)}
+#audioBar{position:fixed; top:12px; right:12px; display:flex; gap:8px; z-index:50}
+#audioBar button{font-size:13px; padding:8px 12px}
+.boards{display:flex; gap:18px; justify-content:center; flex-wrap:wrap}
+.boardbox{flex:1 1 440px; max-width:560px; background:rgba(4,18,28,.5); border-radius:14px; padding:10px; border:1px solid rgba(70,200,255,.25); position:relative}
+.boardbox h3{margin:0 0 6px; text-align:center; font-size:14px; letter-spacing:2px; text-transform:uppercase; font-family:'Press Start 2P',monospace; color:#9fe6ff}
+.boardbox.mine h3{color:#7CFFB0}
+.boardbox.foe h3{color:#ff8a7d}
+canvas.scene{ width:100%; height:380px; border-radius:10px; display:block; background:#05121b; touch-action:none;}
+.radar{position:absolute; top:8px; right:10px; width:74px; height:74px; z-index:5; filter:drop-shadow(0 0 6px #1bff7a);}
+.foe canvas.scene{cursor:crosshair}
+</style>
+</head>
+<body>
+<div id="audioBar">
+  <button id="musicBtn" class="ghost">🎷 Джаз: выкл</button>
+  <button id="sfxBtn" class="ghost">🔊 Звуки: вкл</button>
+</div>
+<div class="titlewrap"><h1>BATTLESHIP 3D</h1></div>
+<div class="sub">~ Морской бой ~</div>
+
+<div class="card" id="lobby">
+  <div class="row">
+    <div style="text-align:center"><button id="hostBtn">⚓ Создать партию</button><div class="hint" style="margin-top:8px">дай код другу</div></div>
+    <div style="opacity:.5;font-weight:800">или</div>
+    <div style="text-align:center"><input id="codeInput" placeholder="КОД"><button id="joinBtn">🎯 Войти</button></div>
+  </div>
+  <div id="codeBox" class="hidden" style="text-align:center;margin-top:16px">Твой код: <span class="code" id="myCode">…</span></div>
+  <div class="status" id="lobbyStatus"></div>
+  
+</div>
+
+<div class="card hidden" id="game">
+  <div class="status" id="status"></div>
+  <div class="row" id="setupBar">
+    <span id="placeHint" class="pill"></span>
+    <button id="rotateBtn" class="ghost">↻ Поворот: гориз.</button>
+    <button id="shuffleBtn" class="ghost">🎲 Случайно</button>
+    <button id="clearBtn" class="ghost">🧹 Очистить</button>
+    <button id="readyBtn" disabled>✓ Готов к бою</button>
+  </div>
+  <div class="boards">
+    <div class="boardbox mine"><h3>⚓ Мой флот</h3><canvas id="sceneMine" class="scene"></canvas></div>
+    <div class="boardbox foe"><h3>🎯 Воды врага</h3><canvas id="sceneFoe" class="scene"></canvas><canvas id="radar" class="radar" width="148" height="148"></canvas></div>
+  </div>
+  <div class="status" id="result"></div>
+  <div style="text-align:center"><button id="rematchBtn" class="hidden">↻ Реванш</button></div>
+</div>
+
+<script>
+const N=10, SHIPS=[4,3,3,2,2,2,1,1,1,1], toPlace=SHIPS;
+const SHIPCOL={4:0x9b59b6,3:0xe8821e,2:0x7cb518,1:0xf4c20d};
+function colorForLen(L){ return SHIPCOL[L]||0x7cb518; }
+function shade(hex,f){ const r=Math.min(255,((hex>>16)&255)*f|0), g=Math.min(255,((hex>>8)&255)*f|0), b=Math.min(255,(hex&255)*f|0); return (r<<16)|(g<<8)|b; }
+
+const $=id=>document.getElementById(id);
+let client, topic, myId=Math.random().toString(36).slice(2), isHost=false, connected=false;
+const BROKER='wss://broker.emqx.io:8084/mqtt';
+let myBoard=[], myShots=[], foeShots=[], placed=[], enemySunk=[];
+let myReady=false, foeReady=false, myTurn=false, gameOn=false, placing=false, orient='h';
+let surfMine=new Set(), surfFoe=new Set();
+function emptyGrid(){return Array.from({length:N},()=>Array(N).fill(0));}
+function keyOf(cells){ return cells.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]).join('|'); }
+
+/* ---------- AUDIO ---------- */
+let AC, musicOn=false, sfxOn=true, musicTimer, barIx=0;
+function ac(){ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); return AC; }
+function noiseBuf(d){ const a=ac(), n=Math.floor(a.sampleRate*d), b=a.createBuffer(1,n,a.sampleRate), ch=b.getChannelData(0); for(let i=0;i<n;i++) ch[i]=Math.random()*2-1; return b; }
+function shot(){ if(!sfxOn)return; const a=ac(),s=a.createBufferSource(); s.buffer=noiseBuf(0.16); const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(2200,a.currentTime); f.frequency.exponentialRampToValueAtTime(180,a.currentTime+0.14); const g=a.createGain(); g.gain.setValueAtTime(0.5,a.currentTime); g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.16); s.connect(f).connect(g).connect(a.destination); s.start(); }
+function boom(){ if(!sfxOn)return; const a=ac(),s=a.createBufferSource(); s.buffer=noiseBuf(0.4); const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(900,a.currentTime); f.frequency.exponentialRampToValueAtTime(70,a.currentTime+0.35); const g=a.createGain(); g.gain.setValueAtTime(0.7,a.currentTime); g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.4); s.connect(f).connect(g).connect(a.destination); s.start(); }
+function bloop(){ if(!sfxOn)return; const a=ac(); const o=a.createOscillator(),g=a.createGain(); o.type='sine'; o.frequency.setValueAtTime(170,a.currentTime); o.frequency.exponentialRampToValueAtTime(620,a.currentTime+0.18); g.gain.setValueAtTime(0.0001,a.currentTime); g.gain.linearRampToValueAtTime(0.32,a.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+0.32); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+0.34);
+  const s=a.createBufferSource(); s.buffer=noiseBuf(0.22); const f=a.createBiquadFilter(); f.type='highpass'; f.frequency.value=1800; const sg=a.createGain(); sg.gain.setValueAtTime(0.18,a.currentTime+0.1); sg.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+0.32); s.connect(f).connect(sg).connect(a.destination); s.start(); }
+function tone(f,d,t,ty,g){ const a=ac(),o=a.createOscillator(),gg=a.createGain(); o.type=ty||'sine'; o.frequency.value=f; gg.gain.setValueAtTime(0.0001,t); gg.gain.linearRampToValueAtTime(g||0.2,t+0.02); gg.gain.exponentialRampToValueAtTime(0.0001,t+d); o.connect(gg).connect(a.destination); o.start(t); o.stop(t+d+0.05); }
+function jingle(){ if(!sfxOn)return; const a=ac(),b=a.currentTime; [523,659,784].forEach((f,i)=>tone(f,0.35,b+i*0.09,'triangle',0.22)); }
+function fanfare(){ if(!sfxOn)return; const a=ac(),b=a.currentTime; [523,659,784,1047,1319].forEach((f,i)=>tone(f,0.6,b+i*0.13,'triangle',0.25)); }
+function mid(m){return 440*Math.pow(2,(m-69)/12);}
+const PROG=[{bass:mid(50),bass2:mid(57),ch:[mid(62),mid(65),mid(69),mid(72)]},{bass:mid(43),bass2:mid(50),ch:[mid(55),mid(59),mid(62),mid(65)]},{bass:mid(48),bass2:mid(55),ch:[mid(60),mid(64),mid(67),mid(71)]},{bass:mid(45),bass2:mid(52),ch:[mid(57),mid(60),mid(64),mid(67)]}];
+function hat(t){ const a=ac(),s=a.createBufferSource(); s.buffer=noiseBuf(0.05); const f=a.createBiquadFilter(); f.type='highpass'; f.frequency.value=8000; const g=a.createGain(); g.gain.setValueAtTime(0.05,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.05); s.connect(f).connect(g).connect(a.destination); s.start(t); }
+function playBar(){ const a=ac(), t=a.currentTime+0.05, bar=PROG[barIx%PROG.length]; bar.ch.forEach(f=>tone(f,1.9,t,'sine',0.045)); tone(bar.bass,0.9,t,'triangle',0.11); tone(bar.bass2,0.9,t+1.0,'triangle',0.09); hat(t+0.66); hat(t+1.33); hat(t+1.66); barIx++; }
+function startMusic(){ if(musicOn)return; musicOn=true; ac(); playBar(); musicTimer=setInterval(playBar,2000); $('musicBtn').textContent='🎷 Джаз: вкл'; }
+function stopMusic(){ musicOn=false; clearInterval(musicTimer); $('musicBtn').textContent='🎷 Джаз: выкл'; }
+$('musicBtn').onclick=()=>{ musicOn?stopMusic():startMusic(); };
+$('sfxBtn').onclick=()=>{ sfxOn=!sfxOn; $('sfxBtn').textContent='🔊 Звуки: '+(sfxOn?'вкл':'выкл'); };
+
+/* ---------- PIXEL WATER TEXTURE (canvas) ---------- */
+let waterTex;
+function makeWaterTexture(){
+  const S=16, cv=document.createElement('canvas'); cv.width=cv.height=S; const x=cv.getContext('2d');
+  const blues=['#1f7fb0','#2a8fc0','#1a6f9e','#2f9ad0','#176088','#249ec9'];
+  for(let i=0;i<S;i++)for(let j=0;j<S;j++){ x.fillStyle=blues[(Math.random()*blues.length)|0]; x.fillRect(i,j,1,1); }
+  // white wave dashes
+  x.fillStyle='rgba(220,240,255,0.9)';
+  for(let k=0;k<5;k++){ const px=(Math.random()*(S-3))|0, py=(Math.random()*S)|0; x.fillRect(px,py,1,1); x.fillRect(px+1,py-1,1,1); x.fillRect(px+2,py-2,1,1); }
+  const t=new THREE.CanvasTexture(cv); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; return t;
+}
+
+/* ---------- THREE.JS (dual boards) ---------- */
+const turretMat=new THREE.MeshStandardMaterial({color:0x8a929c, metalness:.4, roughness:.6});
+const darkMat=new THREE.MeshStandardMaterial({color:0x4a525c, metalness:.5, roughness:.5});
+function cellPos(r,c){ return {x:(c-4.5), z:(r-4.5)}; }
+let views={}, anims=[], clock;
+
+function View(canvasId, onCell){
+  this.canvas=$(canvasId); this.onCell=onCell;
+  this.renderer=new THREE.WebGLRenderer({canvas:this.canvas, antialias:true}); this.renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  this.scene=new THREE.Scene(); this.scene.fog=new THREE.Fog(0x05121b,16,32);
+  this.camera=new THREE.PerspectiveCamera(45, 1.4, 0.1, 100); this.camera.position.set(0,12.5,10.5); this.camera.lookAt(0,0,0);
+  this.scene.add(new THREE.AmbientLight(0x88aacc,.75));
+  const dl=new THREE.DirectionalLight(0xffffff,.95); dl.position.set(6,14,8); this.scene.add(dl);
+  const dl2=new THREE.DirectionalLight(0x335577,.4); dl2.position.set(-8,6,-6); this.scene.add(dl2);
+  this.raycaster=new THREE.Raycaster(); this.pointer={x:0,y:0,has:false};
+  this.group=new THREE.Group(); this.tiles=[]; this.ships=[]; this.marks=[];
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(11.4,0.7,11.4), new THREE.MeshStandardMaterial({color:0x14304a, roughness:.9}));
+  slab.position.y=-0.5; this.group.add(slab);
+  for(let r=0;r<N;r++){ this.tiles[r]=[]; for(let c=0;c<N;c++){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(0.94,0.4,0.94), new THREE.MeshStandardMaterial({map:waterTex, roughness:.55}));
+    const p=cellPos(r,c); m.position.set(p.x,0,p.z); m.userData={r,c}; this.group.add(m); this.tiles[r][c]=m; } }
+  this.scene.add(this.group);
+  const self=this;
+  this.size=function(){ const w=self.canvas.clientWidth,h=self.canvas.clientHeight; self.renderer.setSize(w,h,false); self.camera.aspect=w/h; self.camera.updateProjectionMatrix(); };
+  this.canvas.addEventListener('pointermove',e=>{ const r=self.canvas.getBoundingClientRect(); self.pointer.x=((e.clientX-r.left)/r.width)*2-1; self.pointer.y=-((e.clientY-r.top)/r.height)*2+1; self.pointer.has=true; });
+  this.canvas.addEventListener('pointerleave',()=>{ self.pointer.has=false; });
+  this.canvas.addEventListener('pointerdown',()=>{ const cell=self.pick(); if(cell&&self.onCell) self.onCell(cell.r,cell.c); });
+  this.size();
+}
+View.prototype.pick=function(){ if(!this.pointer.has) return null; this.raycaster.setFromCamera(this.pointer,this.camera);
+  const flat=[]; for(let r=0;r<N;r++)for(let c=0;c<N;c++) flat.push(this.tiles[r][c]); const h=this.raycaster.intersectObjects(flat,false); if(!h.length) return null; return h[0].object.userData; };
+View.prototype.baseY=function(r,c,t){ return Math.sin(t*1.6 + r*0.6 + c*0.5)*0.05; };
+View.prototype.clearShips=function(){ this.ships.forEach(g=>this.group.remove(g)); this.ships=[]; };
+View.prototype.clearMarks=function(){ this.marks.forEach(g=>this.group.remove(g)); this.marks=[]; };
+View.prototype.clearHL=function(){ for(let r=0;r<N;r++)for(let c=0;c<N;c++){ const t=this.tiles[r][c]; if(t.userData.hl){ t.material.emissive.setHex(0x000000); t.userData.hl=false; } } };
+View.prototype.highlight=function(cells,ok){ this.clearHL(); cells.forEach(([r,c])=>{ if(r>=0&&c>=0&&r<N&&c<N){ this.tiles[r][c].material.emissive.setHex(ok?0x1f7a3a:0x7a1f1f); this.tiles[r][c].userData.hl=true; } }); };
+// LEGO / Minecraft style ship: blocky cubes per cell + studs on top + turret tower
+View.prototype.addShip=function(cells,colorHex,surface){
+  const L=cells.length;
+  const cx=cells.reduce((a,p)=>a+cellPos(p[0],p[1]).x,0)/L, cz=cells.reduce((a,p)=>a+cellPos(p[0],p[1]).z,0)/L;
+  const s=cells.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const horiz = L===1 || s[0][0]===s[1][0];
+  const hullMat=new THREE.MeshStandardMaterial({color:colorHex, roughness:.6, metalness:.12, emissive:colorHex, emissiveIntensity:.12});
+  const deckMat=new THREE.MeshStandardMaterial({color:shade(colorHex,0.72), roughness:.75});
+  const beltMat=new THREE.MeshStandardMaterial({color:shade(colorHex,0.5), roughness:.8});
+  const g=new THREE.Group();
+  const span=(L-1)*0.9, center=span/2;
+  for(let i=0;i<L;i++){
+    const x=i*0.9-center;
+    // dark waterline belt (slightly wider, low)
+    const belt=new THREE.Mesh(new THREE.BoxGeometry(0.86,0.16,0.7), beltMat); belt.position.set(x,0.12,0); g.add(belt);
+    // hull block
+    const hull=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.3,0.62), hullMat); hull.position.set(x,0.3,0); g.add(hull);
+    // raised deck strip
+    const deck=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.12,0.46), deckMat); deck.position.set(x,0.5,0); g.add(deck);
+    // grey turret per cell: base + short barrel
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.17,0.14,12), turretMat); base.position.set(x,0.6,0); g.add(base);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.14,0.22), turretMat); cap.position.set(x,0.62,0); g.add(cap);
+  }
+  // pointed bow at +X end (a faceted wedge)
+  const bow=new THREE.Mesh(new THREE.ConeGeometry(0.34,0.7,4), hullMat); bow.rotation.z=-Math.PI/2; bow.rotation.y=Math.PI/4; bow.position.set(span-center+0.5,0.28,0); g.add(bow);
+  const bowBelt=new THREE.Mesh(new THREE.ConeGeometry(0.37,0.5,4), beltMat); bowBelt.rotation.z=-Math.PI/2; bowBelt.rotation.y=Math.PI/4; bowBelt.position.set(span-center+0.42,0.12,0); g.add(bowBelt);
+  // stern cap at -X end
+  const stern=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.26,0.6), hullMat); stern.position.set(-center-0.42,0.26,0); g.add(stern);
+  if(!horiz) g.rotation.y=Math.PI/2;
+  g.position.set(cx,0,cz);
+  if(surface){ g.position.y=-1.9; anims.push({g,target:0,sp:2.4}); }
+  this.group.add(g); this.ships.push(g);
+};
+View.prototype.addMark=function(r,c,hit){ const g=new THREE.Group(); const col=hit?0x33dd77:0xff4433; const mat=new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:.6});
+  for(const ang of [Math.PI/4,-Math.PI/4]){ const b=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.09,0.12), mat); b.rotation.y=ang; g.add(b); }
+  const p=cellPos(r,c); g.position.set(p.x,0.5,p.z); this.group.add(g); this.marks.push(g); };
+
+function initThree(){ waterTex=makeWaterTexture(); clock=new THREE.Clock();
+  views.mine=new View('sceneMine', (r,c)=>{ if(placing) placeAt(r,c); });
+  views.foe =new View('sceneFoe', (r,c)=>{ if(gameOn) fire(r,c); });
+  window.addEventListener('resize',()=>{ views.mine.size(); views.foe.size(); });
+  animate(); animateRadar();
+}
+function animate(){ requestAnimationFrame(animate); const t=clock?clock.getElapsedTime():0;
+  ['mine','foe'].forEach(k=>{ const v=views[k]; if(!v) return; for(let r=0;r<N;r++)for(let c=0;c<N;c++) v.tiles[r][c].position.y=v.baseY(r,c,t); });
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.g.position.y+=(a.target-a.g.position.y)*Math.min(1,a.sp*0.016); if(Math.abs(a.target-a.g.position.y)<0.01){ a.g.position.y=a.target; anims.splice(i,1);} }
+  if(placing && views.mine){ const cell=views.mine.pick(); if(cell && placed.length<toPlace.length){ const len=toPlace[placed.length], h=orient==='h'; const cs=[]; for(let i=0;i<len;i++) cs.push([cell.r+(h?0:i),cell.c+(h?i:0)]); views.mine.highlight(cs, fits(cell.r,cell.c,len,h)); } else views.mine.clearHL(); }
+  if(views.mine) views.mine.renderer.render(views.mine.scene,views.mine.camera);
+  if(views.foe) views.foe.renderer.render(views.foe.scene,views.foe.camera);
+}
+/* ---------- RADAR ---------- */
+let radarAng=0;
+function animateRadar(){ requestAnimationFrame(animateRadar); const cv=$('radar'); if(!cv) return; const x=cv.getContext('2d'), W=cv.width, R=W/2; x.clearRect(0,0,W,W);
+  x.fillStyle='#04150a'; x.beginPath(); x.arc(R,R,R-2,0,7); x.fill();
+  x.strokeStyle='rgba(40,255,120,0.5)'; x.lineWidth=2; for(const rr of [R-8,R*0.66,R*0.33]){ x.beginPath(); x.arc(R,R,rr,0,7); x.stroke(); }
+  x.beginPath(); x.moveTo(R,8); x.lineTo(R,W-8); x.moveTo(8,R); x.lineTo(W-8,R); x.stroke();
+  radarAng+=0.05; const g=x.createConicGradient? null:null;
+  x.save(); x.translate(R,R); x.rotate(radarAng);
+  const grad=x.createLinearGradient(0,0,R,0); grad.addColorStop(0,'rgba(60,255,140,0.7)'); grad.addColorStop(1,'rgba(60,255,140,0)');
+  x.fillStyle=grad; x.beginPath(); x.moveTo(0,0); x.arc(0,0,R-8,-0.4,0); x.closePath(); x.fill();
+  x.strokeStyle='rgba(120,255,170,0.95)'; x.lineWidth=2; x.beginPath(); x.moveTo(0,0); x.lineTo(R-8,0); x.stroke(); x.restore();
+  // blips
+  x.fillStyle='rgba(120,255,170,0.9)'; for(const b of [[0.5,0.3],[-0.4,0.6],[0.2,-0.5]]){ x.beginPath(); x.arc(R+b[0]*R*0.6,R+b[1]*R*0.6,2,0,7); x.fill(); }
+}
+
+/* ---------- placement ---------- */
+function fits(r,c,len,h){ for(let i=0;i<len;i++){ const rr=r+(h?0:i), cc=c+(h?i:0); if(rr<0||cc<0||rr>=N||cc>=N) return false; for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){ const a=rr+dr,b=cc+dc; if(a>=0&&b>=0&&a<N&&b<N&&myBoard[a][b]) return false; } } return true; }
+function stamp(r,c,len,h){ const cells=[]; for(let i=0;i<len;i++){ const rr=r+(h?0:i),cc=c+(h?i:0); myBoard[rr][cc]=1; cells.push([rr,cc]); } placed.push(cells); }
+function randomFill(){ myBoard=emptyGrid(); placed=[]; for(const len of SHIPS){ let ok=false,t=0; while(!ok&&t++<800){ const h=Math.random()<.5, r=(Math.random()*N)|0, c=(Math.random()*N)|0; if(fits(r,c,len,h)){ stamp(r,c,len,h); ok=true; } } } refresh3D(); updateSetup(); }
+function resetPlacement(){ myBoard=emptyGrid(); placed=[]; orient='h'; $('rotateBtn').textContent='↻ Поворот: гориз.'; refresh3D(); updateSetup(); }
+function placeAt(r,c){ if(!placing||placed.length>=toPlace.length) return; const len=toPlace[placed.length], h=orient==='h'; if(!fits(r,c,len,h)) return; stamp(r,c,len,h); refresh3D(); updateSetup(); if(sfxOn) hat(ac().currentTime); }
+function updateSetup(){ const done=placed.length>=toPlace.length; $('readyBtn').disabled=!done; if(done){ $('placeHint').textContent='Все корабли расставлены ✓'; } else{ const names={4:'4-палубный',3:'3-палубный',2:'2-палубный',1:'1-палубный'}; $('placeHint').textContent='Ставь: '+names[toPlace[placed.length]]+'  ('+(placed.length+1)+'/'+toPlace.length+')'; } }
+$('rotateBtn').onclick=()=>{ orient=orient==='h'?'v':'h'; $('rotateBtn').textContent='↻ Поворот: '+(orient==='h'?'гориз.':'верт.'); };
+$('shuffleBtn').onclick=()=>{ if(placing) randomFill(); };
+$('clearBtn').onclick=()=>{ if(placing) resetPlacement(); };
+
+/* ---------- render state -> 3D ---------- */
+function shipSunk(cells){ return cells.every(([r,c])=>foeShots.find(s=>s.r===r&&s.c===c&&s.hit)); }
+function refresh3D(){ if(!views.mine) return;
+  views.mine.clearShips(); views.mine.clearMarks();
+  placed.forEach((cells,i)=>{ const sunk=shipSunk(cells); const k=keyOf(cells); const newSurf=sunk&&!surfMine.has(k); if(sunk) surfMine.add(k); views.mine.addShip(cells, colorForLen(cells.length), newSurf); });
+  foeShots.forEach(s=>views.mine.addMark(s.r,s.c,s.hit));
+  views.foe.clearShips(); views.foe.clearMarks();
+  enemySunk.forEach((cells,i)=>{ const k=keyOf(cells); const newSurf=!surfFoe.has(k); surfFoe.add(k); views.foe.addShip(cells, colorForLen(cells.length), newSurf); });
+  myShots.forEach(s=>views.foe.addMark(s.r,s.c,s.hit));
+}
+
+/* ---------- networking ---------- */
+function send(m){ if(client&&client.connected){ m.from=myId; client.publish(topic, JSON.stringify(m)); } }
+function connectMqtt(code, host){ isHost=host; topic='mbsea/'+code; $('lobbyStatus').textContent='Соединяемся с сервером…';
+  client=mqtt.connect(BROKER,{clientId:'mb_'+myId, clean:true, connectTimeout:8000, reconnectPeriod:2000});
+  client.on('connect',()=>{ client.subscribe(topic,()=>{ if(host){ $('lobbyStatus').textContent='Жду второго игрока…'; } else{ $('lobbyStatus').textContent='Подключаемся к партии…'; let t=0; const iv=setInterval(()=>{ if(connected||t++>12){clearInterval(iv); if(!connected)$('lobbyStatus').textContent='Партия не найдена. Проверь код.'; return;} send({type:'join'}); },1500); send({type:'join'}); } }); });
+  client.on('message',(t,p)=>{ let m; try{ m=JSON.parse(p.toString()); }catch(e){ return; } if(m.from===myId) return;
+    if(m.type==='join'&&host){ send({type:'welcome'}); if(!connected){connected=true; startGame();} return; }
+    if(m.type==='welcome'&&!host){ if(!connected){connected=true; startGame();} return; }
+    if(!connected) return; onData(m); });
+  client.on('error',()=>{ $('lobbyStatus').textContent='Проблема со связью, пробуем ещё…'; });
+}
+$('hostBtn').onclick=()=>{ startMusic(); const code=Math.random().toString(36).slice(2,7); $('myCode').textContent=code.toUpperCase(); $('codeBox').classList.remove('hidden'); $('hostBtn').disabled=true; connectMqtt(code,true); };
+$('joinBtn').onclick=()=>{ startMusic(); let code=$('codeInput').value.trim().toLowerCase(); if(!code){ $('lobbyStatus').textContent='Введи код'; return; } connectMqtt(code,false); };
+
+function onData(m){
+  if(m.type==='ready'){ foeReady=true; tryBegin(); }
+  else if(m.type==='fire'){ defend(m.r,m.c); }
+  else if(m.type==='result'){ let s=myShots.find(x=>x.r===m.r&&x.c===m.c); if(!s){ s={r:m.r,c:m.c}; myShots.push(s); } s.hit=m.hit; s.sunk=m.sunk;
+    if(m.hit) boom();
+    if(m.sunkCells){ m.sunkCells.forEach(([r,c])=>{ let x=myShots.find(q=>q.r===r&&q.c===c); if(x) x.sunk=true; }); enemySunk.push(m.sunkCells); jingle(); setTimeout(bloop,150); }
+    if(m.win){ refresh3D(); endGame(true); return; }
+    myTurn=!!m.hit; setTurn(); refresh3D(); }
+  else if(m.type==='rematch'){ doRematch(); }
+}
+
+/* ---------- flow ---------- */
+function startGame(){ $('lobby').classList.add('hidden'); $('game').classList.remove('hidden'); if(!views.mine) initThree(); setTimeout(()=>{ views.mine.size(); views.foe.size(); },50);
+  myShots=[]; foeShots=[]; enemySunk=[]; surfMine=new Set(); surfFoe=new Set(); myReady=foeReady=gameOn=false; placing=true;
+  $('setupBar').classList.remove('hidden'); $('shuffleBtn').disabled=false; $('clearBtn').disabled=false; $('rotateBtn').disabled=false; $('readyBtn').disabled=true;
+  $('status').textContent='Расставь корабли ⚓ (клик по «Мой флот»)'; resetPlacement(); }
+$('readyBtn').onclick=()=>{ if(placed.length<toPlace.length) return; myReady=true; placing=false; send({type:'ready'}); $('shuffleBtn').disabled=true; $('clearBtn').disabled=true; $('rotateBtn').disabled=true; $('readyBtn').disabled=true; views.mine.clearHL(); $('status').textContent='Ждём соперника…'; tryBegin(); };
+function tryBegin(){ if(myReady&&foeReady) begin(); }
+function begin(){ gameOn=true; $('setupBar').classList.add('hidden'); myTurn=isHost; setTurn(); }
+function setTurn(){ if(!gameOn) return; $('status').innerHTML = myTurn ? '<span class="pill turn-me">🎯 Твой ход — кликай по «Воды врага»!</span>' : '<span class="pill turn-foe">⏳ Ход соперника…</span>'; }
+function fire(r,c){ if(!gameOn||!myTurn) return; if(myShots.find(s=>s.r===r&&s.c===c)) return; shot(); send({type:'fire',r,c}); }
+function defend(r,c){ const hit=!!myBoard[r][c]; foeShots.push({r,c,hit}); shot(); let sunk=false,sunkCells=null,win=false;
+  if(hit){ boom(); const ship=placed.find(cells=>cells.some(([sr,sc])=>sr===r&&sc===c)); if(ship){ sunk=ship.every(([sr,sc])=>foeShots.find(s=>s.r===sr&&s.c===sc&&s.hit)); if(sunk){ sunkCells=ship; jingle(); setTimeout(bloop,150); } } win=placed.flat().every(([sr,sc])=>foeShots.find(s=>s.r===sr&&s.c===sc&&s.hit)); }
+  send({type:'result',r,c,hit,sunk,sunkCells,win}); refresh3D(); if(win){ endGame(false); return; } myTurn=!hit; setTurn(); }
+function endGame(iWon){ gameOn=false; if(iWon) fanfare(); $('result').innerHTML = iWon ? '🏆 <b>ПОБЕДА! Флот врага потоплен.</b>' : '💀 Твой флот уничтожен…'; $('status').textContent=''; $('rematchBtn').classList.remove('hidden'); }
+$('rematchBtn').onclick=()=>{ send({type:'rematch'}); doRematch(); };
+function doRematch(){ $('rematchBtn').classList.add('hidden'); $('result').textContent=''; startGame(); }
+</script>
+</body>
+</html>
