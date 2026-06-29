@@ -13,7 +13,7 @@
 body{ font-family:'Rubik',sans-serif; color:var(--ink); margin:0; min-height:100vh; padding:16px;
   background:radial-gradient(1200px 700px at 50% -10%, #123047 0%, #081c29 55%, #030d14 100%); overflow-x:hidden;}
 .titlewrap{text-align:center; margin-bottom:12px}
-h1{ display:inline-block; font-family:'Press Start 2P',monospace; font-size:22px; margin:0; padding:14px 30px;
+h1{ display:inline-block; font-family:'Press Start 2P',monospace; font-size:18px; margin:0; padding:10px 22px;
   color:#bfeaff; background:#0a2236; border:3px solid var(--neon); border-radius:10px;
   text-shadow:0 0 10px var(--neon),0 0 22px #1e90ff; box-shadow:0 0 22px rgba(70,200,255,.45), inset 0 0 20px rgba(70,200,255,.18);}
 .sub{text-align:center; opacity:.6; margin-bottom:14px; letter-spacing:3px; font-size:12px; text-transform:uppercase}
@@ -21,12 +21,12 @@ h1{ display:inline-block; font-family:'Press Start 2P',monospace; font-size:22px
   border:1.5px solid rgba(70,200,255,.4); border-radius:18px; padding:18px; box-shadow:0 18px 50px rgba(0,0,0,.55); position:relative;}
 .row{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; align-items:center}
 button,input{font-family:'Rubik',sans-serif; font-size:15px; font-weight:600}
-button{ cursor:pointer; color:#06222e; background:linear-gradient(180deg,#7fe0ff,#46c8ff); border:none; padding:10px 18px; border-radius:12px; box-shadow:0 6px 16px rgba(70,200,255,.3), inset 0 1px 0 rgba(255,255,255,.5); transition:transform .06s, filter .15s;}
+button{ cursor:pointer; color:#06222e; background:linear-gradient(180deg,#7fe0ff,#46c8ff); border:none; padding:7px 13px; border-radius:12px; font-size:14px; box-shadow:0 6px 16px rgba(70,200,255,.3), inset 0 1px 0 rgba(255,255,255,.5); transition:transform .06s, filter .15s;}
 button:hover{transform:translateY(-1px); filter:brightness(1.06)} button:active{transform:translateY(1px)}
 button.ghost{background:linear-gradient(180deg,#1c4d66,#123848); color:#9fe6ff; box-shadow:inset 0 0 0 1px rgba(70,200,255,.4)}
 button:disabled{opacity:.4; cursor:not-allowed; transform:none}
 input{padding:10px 14px; border:1.5px solid rgba(70,200,255,.5); border-radius:12px; background:rgba(4,20,29,.7); color:var(--ink); width:180px; text-transform:uppercase; letter-spacing:3px; text-align:center}
-.status{text-align:center; font-size:19px; min-height:26px; margin:8px 0; font-weight:600}
+.status{text-align:center; font-size:16px; min-height:26px; margin:8px 0; font-weight:600}
 .hint{text-align:center; opacity:.7; font-size:14px}
 .code{font-family:'Press Start 2P',monospace; font-size:24px; letter-spacing:4px; color:#7fe0ff; user-select:all; text-shadow:0 0 14px var(--neon)}
 .hidden{display:none}
@@ -36,11 +36,11 @@ input{padding:10px 14px; border:1.5px solid rgba(70,200,255,.5); border-radius:1
 #audioBar{position:fixed; top:12px; right:12px; display:flex; gap:12px; z-index:50}
 #audioBar button{font-size:13px; padding:8px 12px}
 .boards{display:flex; gap:18px; justify-content:center; flex-wrap:wrap; margin-top:26px}
-.boardbox{flex:1 1 440px; max-width:560px; background:rgba(4,18,28,.5); border-radius:14px; padding:10px; border:1px solid rgba(70,200,255,.25); position:relative}
+.boardbox{flex:1 1 520px; max-width:680px; background:rgba(4,18,28,.5); border-radius:14px; padding:10px; border:1px solid rgba(70,200,255,.25); position:relative}
 .boardbox h3{margin:0 0 6px; text-align:center; font-size:14px; letter-spacing:2px; text-transform:uppercase; font-family:'Press Start 2P',monospace; color:#9fe6ff}
 .boardbox.mine h3{color:#7CFFB0}
 .boardbox.foe h3{color:#ff8a7d}
-canvas.scene{ width:100%; height:380px; border-radius:10px; display:block; background:#05121b; touch-action:none;}
+canvas.scene{ width:100%; height:460px; border-radius:10px; display:block; background:#05121b; touch-action:none;}
 .radar{position:absolute; top:8px; right:10px; width:74px; height:74px; z-index:5; filter:drop-shadow(0 0 6px #1bff7a);}
 .foe canvas.scene{cursor:crosshair}
 .titlewrap,.sub{display:none}
@@ -50,6 +50,14 @@ canvas.scene{ width:100%; height:380px; border-radius:10px; display:block; backg
 #videoOverlay.show{opacity:1;transform:none}
 #videoOverlay.hidden{display:none}
 #videoOverlay video{display:block;width:100%;height:auto}
+
+#vidGallery{position:fixed; right:12px; bottom:12px; width:300px; background:rgba(6,22,32,.92); border:2px solid rgba(70,200,255,.5); border-radius:14px; z-index:80; box-shadow:0 10px 30px rgba(0,0,0,.6); overflow:hidden}
+#vidGalHead{cursor:pointer; padding:6px 12px; font-weight:800; color:#bfeaff; background:rgba(70,200,255,.15); user-select:none; font-size:13px}
+#vidGalGrid{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px; max-height:330px; overflow-y:auto}
+#vidGallery.collapsed #vidGalGrid{display:none}
+.vidTile{position:relative; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid rgba(70,200,255,.3); background:#000}
+.vidTile video{width:100%; height:76px; object-fit:cover; display:block}
+.vidLab{position:absolute; left:0; right:0; bottom:0; font-size:10px; padding:2px 4px; background:rgba(0,0,0,.6); color:#cfeeff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -214,14 +222,16 @@ View.prototype.addShip=function(cells,colorHex,mode){
   if(!horiz) g.rotation.y=Math.PI/2;
   g.position.set(cx,0,cz);
   if(mode==='surface'){ g.position.y=-1.9; anims.push({g,target:0,sp:2.4}); }
-  else if(mode==='sink'){ anims.push({g,target:-1.7,sp:1.7}); }
-  else if(mode==='sunk'){ g.position.y=-1.7; }
+  else if(mode==='sink'){ anims.push({g,target:-3.4,sp:1.7,remove:true}); }
+  else if(mode==='sunk'){ return; }
   this.group.add(g); this.ships.push(g);
 };
 View.prototype.addSunkFill=function(r,c){
   const g=new THREE.Group();
-  const mat=new THREE.MeshBasicMaterial({color:0xff2a2a, transparent:true, opacity:0.55});
+  const mat=new THREE.MeshBasicMaterial({color:0xff2a2a, transparent:true, opacity:0.82});
   const fill=new THREE.Mesh(new THREE.BoxGeometry(0.92,0.06,0.92), mat); fill.position.y=0.46; g.add(fill);
+  const cmat=new THREE.MeshBasicMaterial({color:0xff6666});
+  for(const ang of [Math.PI/4,-Math.PI/4]){ const b=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.08,0.14), cmat); b.position.y=0.52; b.rotation.y=ang; g.add(b); }
   const p=cellPos(r,c); g.position.set(p.x,0,p.z); this.group.add(g); this.marks.push(g);
 };
 View.prototype.addMark=function(r,c,hit){ const g=new THREE.Group(); const col=hit?0x33dd77:0xff4433; const mat=new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:.6});
@@ -236,7 +246,7 @@ function initThree(){ waterTex=makeWaterTexture(); clock=new THREE.Clock();
 }
 function animate(){ requestAnimationFrame(animate); const t=clock?clock.getElapsedTime():0;
   ['mine','foe'].forEach(k=>{ const v=views[k]; if(!v) return; for(let r=0;r<N;r++)for(let c=0;c<N;c++) v.tiles[r][c].position.y=v.baseY(r,c,t); });
-  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.g.position.y+=(a.target-a.g.position.y)*Math.min(1,a.sp*0.016); if(Math.abs(a.target-a.g.position.y)<0.01){ a.g.position.y=a.target; anims.splice(i,1);} }
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; a.g.position.y+=(a.target-a.g.position.y)*Math.min(1,a.sp*0.016); if(Math.abs(a.target-a.g.position.y)<0.01){ a.g.position.y=a.target; if(a.remove&&a.g.parent) a.g.parent.remove(a.g); anims.splice(i,1);} }
   if(placing && views.mine){ const cell=views.mine.pick(); if(cell && placed.length<toPlace.length){ const len=toPlace[placed.length], h=orient==='h'; const cs=[]; for(let i=0;i<len;i++) cs.push([cell.r+(h?0:i),cell.c+(h?i:0)]); views.mine.highlight(cs, fits(cell.r,cell.c,len,h)); } else views.mine.clearHL(); }
   if(views.mine) views.mine.renderer.render(views.mine.scene,views.mine.camera);
   if(views.foe) views.foe.renderer.render(views.foe.scene,views.foe.camera);
@@ -321,6 +331,27 @@ function defend(r,c){ const hit=!!myBoard[r][c]; foeShots.push({r,c,hit}); shot(
 function endGame(iWon){ gameOn=false; if(iWon) fanfare(); $('result').innerHTML = iWon ? '🏆 <b>ПОБЕДА! Флот врага потоплен.</b>' : '💀 Твой флот уничтожен…'; $('status').textContent=''; $('rematchBtn').classList.remove('hidden'); }
 $('rematchBtn').onclick=()=>{ send({type:'rematch'}); doRematch(); };
 function doRematch(){ $('rematchBtn').classList.add('hidden'); $('result').textContent=''; startGame(); }
+</script>
+
+<div id="vidGallery"><div id="vidGalHead">🎬 Видео-вставки</div><div id="vidGalGrid"></div></div>
+<script>
+(function(){
+  if(typeof VID==='undefined') return;
+  var names={victory:'Победа',our_ship_sunk:'Наш корабль потоплен',our_1deck_sunk:'1-палубный потоплен',miss1:'Промах 1',miss2:'Промах 2',hit_2deck:'Попадание 2-пал.',hit_3deck:'Попадание 3-пал.',sink_4deck:'Топим 4-пал.',sink_1deck:'Топим 1-пал.',first_kill:'Первое уничтожение'};
+  var grid=document.getElementById('vidGalGrid');
+  Object.keys(VID).forEach(function(k){
+    var t=document.createElement('div'); t.className='vidTile';
+    var v=document.createElement('video'); v.src=VID[k]; v.muted=true; v.loop=true; v.playsInline=true; v.preload='metadata';
+    t.appendChild(v);
+    var lab=document.createElement('div'); lab.className='vidLab'; lab.textContent=names[k]||k; t.appendChild(lab);
+    t.addEventListener('mouseenter',function(){ try{v.currentTime=0; v.play();}catch(e){} });
+    t.addEventListener('mouseleave',function(){ try{v.pause();}catch(e){} });
+    t.addEventListener('click',function(){ try{ playEventVideo(k); }catch(e){} });
+    grid.appendChild(t);
+  });
+  var head=document.getElementById('vidGalHead'), gal=document.getElementById('vidGallery');
+  head.addEventListener('click',function(){ gal.classList.toggle('collapsed'); });
+})();
 </script>
 </body>
 </html>
