@@ -46,18 +46,10 @@ canvas.scene{ width:100%; height:460px; border-radius:10px; display:block; backg
 .titlewrap,.sub{display:none}
 .cover{display:block;width:100%;max-width:1100px;margin:2px auto 18px;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.65);border:1.5px solid rgba(70,200,255,.45)}
 
-#videoOverlay{position:fixed;right:18px;bottom:18px;width:130px;max-width:15vw;z-index:9999;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);border:2px solid rgba(70,200,255,.6);background:#000;opacity:0;transform:translateY(20px) scale(.96);transition:opacity .35s,transform .35s}
+#videoOverlay{position:fixed;left:18px;bottom:18px;width:117px;max-width:14vw;z-index:9999;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);border:2px solid rgba(70,200,255,.6);background:#000;opacity:0;transform:translateY(20px) scale(.96);transition:opacity .35s,transform .35s}
 #videoOverlay.show{opacity:1;transform:none}
 #videoOverlay.hidden{display:none}
 #videoOverlay video{display:block;width:100%;height:auto}
-
-#vidGallery{position:fixed; right:12px; bottom:12px; width:300px; background:rgba(6,22,32,.92); border:2px solid rgba(70,200,255,.5); border-radius:14px; z-index:80; box-shadow:0 10px 30px rgba(0,0,0,.6); overflow:hidden}
-#vidGalHead{cursor:pointer; padding:6px 12px; font-weight:800; color:#bfeaff; background:rgba(70,200,255,.15); user-select:none; font-size:13px}
-#vidGalGrid{display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px; max-height:330px; overflow-y:auto}
-#vidGallery.collapsed #vidGalGrid{display:none}
-.vidTile{position:relative; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid rgba(70,200,255,.3); background:#000}
-.vidTile video{width:100%; height:76px; object-fit:cover; display:block}
-.vidLab{position:absolute; left:0; right:0; bottom:0; font-size:10px; padding:2px 4px; background:rgba(0,0,0,.6); color:#cfeeff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -333,25 +325,6 @@ $('rematchBtn').onclick=()=>{ send({type:'rematch'}); doRematch(); };
 function doRematch(){ $('rematchBtn').classList.add('hidden'); $('result').textContent=''; startGame(); }
 </script>
 
-<div id="vidGallery"><div id="vidGalHead">🎬 Видео-вставки</div><div id="vidGalGrid"></div></div>
-<script>
-(function(){
-  if(typeof VID==='undefined') return;
-  var names={victory:'Победа',our_ship_sunk:'Наш корабль потоплен',our_1deck_sunk:'1-палубный потоплен',miss1:'Промах 1',miss2:'Промах 2',hit_2deck:'Попадание 2-пал.',hit_3deck:'Попадание 3-пал.',sink_4deck:'Топим 4-пал.',sink_1deck:'Топим 1-пал.',first_kill:'Первое уничтожение'};
-  var grid=document.getElementById('vidGalGrid');
-  Object.keys(VID).forEach(function(k){
-    var t=document.createElement('div'); t.className='vidTile';
-    var v=document.createElement('video'); v.src=VID[k]; v.muted=true; v.loop=true; v.playsInline=true; v.preload='metadata';
-    t.appendChild(v);
-    var lab=document.createElement('div'); lab.className='vidLab'; lab.textContent=names[k]||k; t.appendChild(lab);
-    t.addEventListener('mouseenter',function(){ try{v.currentTime=0; v.play();}catch(e){} });
-    t.addEventListener('mouseleave',function(){ try{v.pause();}catch(e){} });
-    t.addEventListener('click',function(){ try{ playEventVideo(k); }catch(e){} });
-    grid.appendChild(t);
-  });
-  var head=document.getElementById('vidGalHead'), gal=document.getElementById('vidGallery');
-  head.addEventListener('click',function(){ gal.classList.toggle('collapsed'); });
-})();
-</script>
+
 </body>
 </html>
