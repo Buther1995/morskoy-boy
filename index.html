@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -45,13 +45,23 @@ canvas.scene{ width:100%; height:380px; border-radius:10px; display:block; backg
 .foe canvas.scene{cursor:crosshair}
 .titlewrap,.sub{display:none}
 .cover{display:block;width:100%;max-width:1100px;margin:2px auto 18px;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.65);border:1.5px solid rgba(70,200,255,.45)}
+
+#videoOverlay{position:fixed;right:18px;bottom:18px;width:340px;max-width:44vw;z-index:9999;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.7);border:2px solid rgba(70,200,255,.6);background:#000;opacity:0;transform:translateY(20px) scale(.96);transition:opacity .35s,transform .35s}
+#videoOverlay.show{opacity:1;transform:none}
+#videoOverlay.hidden{display:none}
+#videoOverlay video{display:block;width:100%;height:auto}
 </style>
 </head>
 <body>
 <div id="audioBar">
+  <button id="whisperBtn" class="ghost">🌊 Тема меню: выкл</button>
+  <button id="balladBtn" class="ghost">⚔️ Музыка боя: выкл</button>
   <button id="musicBtn" class="ghost">🎷 Джаз: выкл</button>
   <button id="sfxBtn" class="ghost">🔊 Звуки: вкл</button>
 </div>
+<audio id="aWhisper" src="media/whispers.mp3" loop preload="none"></audio>
+<audio id="aBallad" src="media/ballad.mp3" loop preload="none"></audio>
+<div id="videoOverlay" class="hidden"><video id="evtVideo" playsinline></video></div>
 <div class="titlewrap"><h1>BATTLESHIP 3D</h1></div>
 <div class="sub">~ Морской бой ~</div>
 
@@ -118,6 +128,15 @@ function startMusic(){ if(musicOn)return; musicOn=true; ac(); playBar(); musicTi
 function stopMusic(){ musicOn=false; clearInterval(musicTimer); $('musicBtn').textContent='🎷 Джаз: выкл'; }
 $('musicBtn').onclick=()=>{ musicOn?stopMusic():startMusic(); };
 $('sfxBtn').onclick=()=>{ sfxOn=!sfxOn; $('sfxBtn').textContent='🔊 Звуки: '+(sfxOn?'вкл':'выкл'); };
+const aWhisper=$('aWhisper'), aBallad=$('aBallad'); let whisperOn=false, balladOn=false;
+$('whisperBtn').onclick=()=>{ whisperOn=!whisperOn; $('whisperBtn').textContent='🌊 Тема меню: '+(whisperOn?'вкл':'выкл'); if(whisperOn){ aWhisper.volume=0.6; aWhisper.play().catch(()=>{}); } else aWhisper.pause(); };
+$('balladBtn').onclick=()=>{ balladOn=!balladOn; $('balladBtn').textContent='⚔️ Музыка боя: '+(balladOn?'вкл':'выкл'); if(balladOn){ aBallad.volume=0.6; aBallad.play().catch(()=>{}); } else aBallad.pause(); };
+const VID={victory:'media/victory.mp4',our_ship_sunk:'media/our_ship_sunk.mp4',our_1deck_sunk:'media/our_1deck_sunk.mp4',miss1:'media/miss1.mp4',miss2:'media/miss2.mp4',hit_2deck:'media/hit_2deck.mp4',hit_3deck:'media/hit_3deck.mp4',sink_4deck:'media/sink_4deck.mp4',sink_1deck:'media/sink_1deck.mp4',first_kill:'media/first_kill.mp4'};
+let vidBusy=false;
+function playEventVideo(key){ const src=VID[key]; if(!src||vidBusy) return; vidBusy=true; const ov=$('videoOverlay'), v=$('evtVideo');
+  const pwv=aWhisper.paused?null:aWhisper.volume, pbv=aBallad.paused?null:aBallad.volume; if(pwv!=null) aWhisper.volume=0.15; if(pbv!=null) aBallad.volume=0.15;
+  let fin=false; const done=()=>{ if(fin) return; fin=true; ov.classList.remove('show'); setTimeout(()=>{ ov.classList.add('hidden'); try{v.pause();}catch(_){} v.removeAttribute('src'); try{v.load();}catch(_){} },350); if(pwv!=null) aWhisper.volume=pwv; if(pbv!=null) aBallad.volume=pbv; vidBusy=false; };
+  v.src=src; v.muted=false; ov.classList.remove('hidden'); requestAnimationFrame(()=>ov.classList.add('show')); v.currentTime=0; v.play().catch(()=>{}); v.onended=done; setTimeout(done,22000); }
 
 /* ---------- PIXEL WATER TEXTURE (canvas) ---------- */
 let waterTex;
@@ -280,7 +299,7 @@ function onData(m){
   else if(m.type==='fire'){ defend(m.r,m.c); }
   else if(m.type==='result'){ let s=myShots.find(x=>x.r===m.r&&x.c===m.c); if(!s){ s={r:m.r,c:m.c}; myShots.push(s); } s.hit=m.hit; s.sunk=m.sunk;
     if(m.hit) boom();
-    if(m.sunkCells){ m.sunkCells.forEach(([r,c])=>{ let x=myShots.find(q=>q.r===r&&q.c===c); if(x) x.sunk=true; }); enemySunk.push(m.sunkCells); jingle(); setTimeout(bloop,150); }
+    let evt=null; if(m.sunkCells){ const firstKill=enemySunk.length===0; m.sunkCells.forEach(([r,c])=>{ let x=myShots.find(q=>q.r===r&&q.c===c); if(x) x.sunk=true; }); enemySunk.push(m.sunkCells); jingle(); setTimeout(bloop,150); const L=m.sunkCells.length; if(m.win) evt='victory'; else if(firstKill) evt='first_kill'; else if(L===4) evt='sink_4deck'; else if(L===1) evt='sink_1deck'; } else if(!m.hit){ evt=Math.random()<0.5?'miss1':'miss2'; } if(evt) playEventVideo(evt);
     if(m.win){ refresh3D(); endGame(true); return; }
     myTurn=!!m.hit; setTurn(); refresh3D(); }
   else if(m.type==='rematch'){ doRematch(); }
@@ -297,7 +316,7 @@ function begin(){ gameOn=true; $('setupBar').classList.add('hidden'); myTurn=isH
 function setTurn(){ if(!gameOn) return; $('status').innerHTML = myTurn ? '<span class="pill turn-me">🎯 Твой ход — кликай по «Воды врага»!</span>' : '<span class="pill turn-foe">⏳ Ход соперника…</span>'; }
 function fire(r,c){ if(!gameOn||!myTurn) return; if(myShots.find(s=>s.r===r&&s.c===c)) return; shot(); send({type:'fire',r,c}); }
 function defend(r,c){ const hit=!!myBoard[r][c]; foeShots.push({r,c,hit}); shot(); let sunk=false,sunkCells=null,win=false;
-  if(hit){ boom(); const ship=placed.find(cells=>cells.some(([sr,sc])=>sr===r&&sc===c)); if(ship){ sunk=ship.every(([sr,sc])=>foeShots.find(s=>s.r===sr&&s.c===sc&&s.hit)); if(sunk){ sunkCells=ship; jingle(); setTimeout(bloop,150); } } win=placed.flat().every(([sr,sc])=>foeShots.find(s=>s.r===sr&&s.c===sc&&s.hit)); }
+  if(hit){ boom(); const ship=placed.find(cells=>cells.some(([sr,sc])=>sr===r&&sc===c)); if(ship){ sunk=ship.every(([sr,sc])=>foeShots.find(s=>s.r===sr&&s.c===sc&&s.hit)); if(sunk){ sunkCells=ship; jingle(); setTimeout(bloop,150); playEventVideo(ship.length===1?'our_1deck_sunk':'our_ship_sunk'); } else { if(ship.length===2) playEventVideo('hit_2deck'); else if(ship.length===3) playEventVideo('hit_3deck'); } } win=placed.flat().every(([sr,sc])=>foeShots.find(s=>s.r===sr&&s.c===sc&&s.hit)); }
   send({type:'result',r,c,hit,sunk,sunkCells,win}); refresh3D(); if(win){ endGame(false); return; } myTurn=!hit; setTurn(); }
 function endGame(iWon){ gameOn=false; if(iWon) fanfare(); $('result').innerHTML = iWon ? '🏆 <b>ПОБЕДА! Флот врага потоплен.</b>' : '💀 Твой флот уничтожен…'; $('status').textContent=''; $('rematchBtn').classList.remove('hidden'); }
 $('rematchBtn').onclick=()=>{ send({type:'rematch'}); doRematch(); };
