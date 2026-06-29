@@ -216,6 +216,7 @@ View.prototype.addShip=function(cells,colorHex,mode){
   if(mode==='surface'){ g.position.y=-1.9; anims.push({g,target:0,sp:2.4}); }
   else if(mode==='sink'){ anims.push({g,target:-3.4,sp:1.7,remove:true}); }
   else if(mode==='sunk'){ return; }
+  else if(mode==='rest'){ g.position.y=0; }
   this.group.add(g); this.ships.push(g);
 };
 View.prototype.addSunkFill=function(r,c){
@@ -278,7 +279,7 @@ function refresh3D(){ if(!views.mine) return;
     if(sunk) cells.forEach(p=>views.mine.addSunkFill(p[0],p[1])); });
   foeShots.forEach(s=>views.mine.addMark(s.r,s.c,s.hit));
   views.foe.clearShips(); views.foe.clearMarks();
-  enemySunk.forEach((cells,i)=>{ const k=keyOf(cells); const newSurf=!surfFoe.has(k); surfFoe.add(k); views.foe.addShip(cells, colorForLen(cells.length), newSurf?'surface':'sunk'); });
+  enemySunk.forEach((cells,i)=>{ const k=keyOf(cells); const newSurf=!surfFoe.has(k); surfFoe.add(k); views.foe.addShip(cells, colorForLen(cells.length), newSurf?'surface':'rest'); });
   myShots.forEach(s=>views.foe.addMark(s.r,s.c,s.hit));
 }
 
