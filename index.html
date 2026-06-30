@@ -302,8 +302,9 @@ function onData(m){
   else if(m.type==='fire'){ defend(m.r,m.c); }
   else if(m.type==='result'){ let s=myShots.find(x=>x.r===m.r&&x.c===m.c); if(!s){ s={r:m.r,c:m.c}; myShots.push(s); } s.hit=m.hit; s.sunk=m.sunk;
     if(m.hit) boom();
-    let evt=null; if(m.sunkCells){ const firstKill=enemySunk.length===0; m.sunkCells.forEach(([r,c])=>{ let x=myShots.find(q=>q.r===r&&q.c===c); if(x) x.sunk=true; }); enemySunk.push(m.sunkCells); jingle(); setTimeout(bloop,150); const L=m.sunkCells.length; if(m.win) evt='victory'; else if(firstKill) evt='first_kill'; else if(L===4) evt='sink_4deck'; else if(L===1) evt='sink_1deck'; } else if(!m.hit){ evt=Math.random()<0.5?'miss1':'miss2'; } if(evt) playEventVideo(evt);
-    if(m.win){ refresh3D(); endGame(true); return; }
+    let evt=null; if(m.sunkCells){ const firstKill=enemySunk.length===0; m.sunkCells.forEach(([r,c])=>{ let x=myShots.find(q=>q.r===r&&q.c===c); if(x) x.sunk=true; }); enemySunk.push(m.sunkCells); jingle(); setTimeout(bloop,150); const L=m.sunkCells.length; if(firstKill) evt='first_kill'; else if(L===4) evt='sink_4deck'; else if(L===1) evt='sink_1deck'; } else if(!m.hit){ evt=Math.random()<0.5?'miss1':'miss2'; }
+    if(m.win){ vidBusy=false; playEventVideo('victory'); refresh3D(); endGame(true); return; }
+    if(evt) playEventVideo(evt);
     myTurn=!!m.hit; setTurn(); refresh3D(); }
   else if(m.type==='rematch'){ doRematch(); }
 }
